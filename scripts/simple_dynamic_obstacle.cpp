@@ -7,7 +7,7 @@
 #include <memory>
 #include<chrono> 
 #include<random> 
-
+#add code for getting the dynamic obj positions
 using namespace std; 
 using namespace std::chrono_literals;
 
