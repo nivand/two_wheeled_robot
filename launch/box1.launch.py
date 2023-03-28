@@ -28,7 +28,7 @@ def generate_launch_description(argv=sys.argv[1:]):
         description='Use simulation/Gazebo clock')
     
     declare_namespace = DeclareLaunchArgument(
-            'namespace', default_value='lewis',
+            'namespace', default_value='robot1',
             description='Top-level namespace')
 
     push_ns = PushRosNamespace(namespace=namespace)
