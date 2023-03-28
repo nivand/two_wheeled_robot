@@ -12,116 +12,114 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Modified by AutomaticAddison.com
 
-import time  # Time library
+import time
+from enum import Enum
 
-from geometry_msgs.msg import PoseStamped # Pose with ref frame and timestamp
-from rclpy.duration import Duration # Handles time for ROS 2
-import rclpy # Python client library for ROS 2
+from action_msgs.msg import GoalStatus
+from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from lifecycle_msgs.srv import GetState
+from nav2_msgs.action import NavigateThroughPoses, NavigateToPose, FollowWaypoints, ComputePathToPose, ComputePathThroughPoses
+from nav2_msgs.srv import LoadMap, ClearEntireCostmap, ManageLifecycleNodes, GetCostmap
+from robot_navigator import BasicNavigator, NavigationResult
+import rclpy
+import scipy.io
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile
+from math import *
+from numpy import *
+from numpy.linalg import *
+from matplotlib.pyplot import *
+from std_msgs.msg import Float32
 
-from nav2_simple_commander.robot_navigator import BasicNavigator, NavigationResult 
+class amclcov(Node):
+    def __init__(self):
+        self.t1=time.time()
+        self.t2=time.time()
+        super().__init__(node_name='amcl_pose')
+        self.initial_pose = PoseStamped()
+        self.initial_pose.header.frame_id = 'map'
+        self.cov_x=[]
+        self.cov_xy=[]
+        self.cov_yx=[]
+        self.cov_y=[]
+        self.covx=[]
+        self.time=[]
+       
+        self.i=0.0
+        self.navigation=BasicNavigator()
+        amcl_pose_qos = QoSProfile(
+          durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+          reliability=QoSReliabilityPolicy.RELIABLE,
+          history=QoSHistoryPolicy.KEEP_LAST,
+          depth=1)
+        self.localization_pose_sub = self.create_subscription(PoseWithCovarianceStamped,
+                                                              'robot1/amcl_pose',
+                                                              self._amclPoseCallback,
+                                                              amcl_pose_qos)
+    def _amclPoseCallback(self, msg):
+        
+        self.covx=msg.pose.covariance
+        self.cov_x.append(self.covx[0])
+        self.cov_xy.append(self.covx[1])
+        self.cov_yx.append(self.covx[6])
+        self.cov_y.append(self.covx[7])
+        print(self.covx[0],'------',self.covx[7])
+        dt=self.t2-self.t1
+        print(self.t2)
+        self.time.append(self.t2)
+        if self.i==30:
+          self.t2=time.time()
+          print('1')
+          scipy.io.savemat('covx1.mat', {'covx1':self.cov_x})
+          scipy.io.savemat('covxv1.mat', {'covxy1':self.cov_xy})
+          scipy.io.savemat('covyx1.mat', {'covyx1':self.cov_yx})
+          scipy.io.savemat('covy1.mat', {'covy1':self.cov_y})
+          scipy.io.savemat('time1.mat', {'time1':self.time})
+          self.plottest()
+          show()              
+        else:
 
-'''
-Navigates a robot from an initial pose to a goal pose.
-'''
-def main():
+          self.i+=1
+          print('i',self.i)  
 
-  # Start the ROS 2 Python Client Library
-  rclpy.init()
+    def plottest(self):
+        dt1=self.t2-self.t1
+        figure()
+        title('covariance')
+        plot(linspace(0.0, dt1, num=len(self.cov_x)),self.cov_x,'b')
+        ylabel('Covariace X($m^2$)')
+        xlabel('Time (s))')
+        grid()  
+        figure()
+        title('covariance')
+        plot(linspace(0.0, dt1, num=len(self.cov_xy)),self.cov_xy,'b')
+        ylabel('Covariace XY($m^2$)')
+        xlabel('Time (s))')
+        grid() 
+        figure()
+        title('covariance')
+        plot(linspace(0.0, dt1, num=len(self.cov_yx)),self.cov_yx,'b')
+        ylabel('Covariace YX($m^2$)')
+        xlabel('Time (s))')
+        grid() 
+        figure()
+        title('covariance')
+        plot(linspace(0.0, dt1, num=len(self.cov_y)),self.cov_y,'b')
+        ylabel('Covariace Y($m^2$)')
+        xlabel('Time (s))')
+        grid() 
 
-  # Launch the ROS 2 Navigation Stack
-  navigator = BasicNavigator()
-
-  # Set the robot's initial pose if necessary
-  # initial_pose = PoseStamped()
-  # initial_pose.header.frame_id = 'map'
-  # initial_pose.header.stamp = navigator.get_clock().now().to_msg()
-  # initial_pose.pose.position.x = 0.0
-  # initial_pose.pose.position.y = 0.0
-  # initial_pose.pose.position.z = 0.0
-  # initial_pose.pose.orientation.x = 0.0
-  # initial_pose.pose.orientation.y = 0.0
-  # initial_pose.pose.orientation.z = 0.0
-  # initial_pose.pose.orientation.w = 1.0
-  # navigator.setInitialPose(initial_pose)
-
-  # Activate navigation, if not autostarted. This should be called after setInitialPose()
-  # or this will initialize at the origin of the map and update the costmap with bogus readings.
-  # If autostart, you should `waitUntilNav2Active()` instead.
-  # navigator.lifecycleStartup()
-
-  # Wait for navigation to fully activate. Use this line if autostart is set to true.
-  navigator.waitUntilNav2Active()
-
-  # If desired, you can change or load the map as well
-  # navigator.changeMap('/path/to/map.yaml')
-
-  # You may use the navigator to clear or obtain costmaps
-  # navigator.clearAllCostmaps()  # also have clearLocalCostmap() and clearGlobalCostmap()
-  # global_costmap = navigator.getGlobalCostmap()
-  # local_costmap = navigator.getLocalCostmap()
-
-  # Set the robot's goal pose
-  goal_pose = PoseStamped()
-  goal_pose.header.frame_id = 'map'
-  goal_pose.header.stamp = navigator.get_clock().now().to_msg()
-  goal_pose.pose.position.x = 4.0
-  goal_pose.pose.position.y = 1.0
-  goal_pose.pose.position.z = 0.25
-  goal_pose.pose.orientation.x = 0.0
-  goal_pose.pose.orientation.y = 0.0
-  goal_pose.pose.orientation.z = 0.0
-  goal_pose.pose.orientation.w = 1.0
-
-  # sanity check a valid path exists
-  # path = navigator.getPath(initial_pose, goal_pose)
-
-  # Go to the goal pose
-  navigator.goToPose(goal_pose)
-
-  i = 0
-
-  # Keep doing stuff as long as the robot is moving towards the goal
-  while not navigator.isNavComplete():
-    ################################################
-    #
-    # Implement some code here for your application!
-    #
-    ################################################
-
-    # Do something with the feedback
-    i = i + 1
-    feedback = navigator.getFeedback()
-    if feedback and i % 5 == 0:
-      print('Distance remaining: ' + '{:.2f}'.format(
-            feedback.distance_remaining) + ' meters.')
-
-      # Some navigation timeout to demo cancellation
-      if Duration.from_msg(feedback.navigation_time) > Duration(seconds=600.0):
-        navigator.cancelNav()
-
-      # Some navigation request change to demo preemption
-      if Duration.from_msg(feedback.navigation_time) > Duration(seconds=120.0):
-        goal_pose.pose.position.x = -3.0
-        navigator.goToPose(goal_pose)
-
-  # Do something depending on the return code
-  result = navigator.getResult()
-  if result == NavigationResult.SUCCEEDED:
-      print('Goal succeeded!')
-  elif result == NavigationResult.CANCELED:
-      print('Goal was canceled!')
-  elif result == NavigationResult.FAILED:
-      print('Goal failed!')
-  else:
-      print('Goal has an invalid return status!')
-
-  # Shut down the ROS 2 Navigation Stack
-  navigator.lifecycleShutdown()
-
-  exit(0)
-
+def main(args=None): 
+    rclpy.init(args=args)
+    m=amclcov()
+    rclpy.spin(m)
+  
+    
+    
+             
 if __name__ == '__main__':
-  main()
+    main()        
