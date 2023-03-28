@@ -50,7 +50,7 @@ class BasicNavigator(Node):
           history=QoSHistoryPolicy.KEEP_LAST,
           depth=1)
         self.localization_pose_sub = self.create_subscription(PoseWithCovarianceStamped,
-                                                              'lewis/amcl_pose',
+                                                              'robot1/amcl_pose',
                                                               self._amclPoseCallback,
                                                               amcl_pose_qos)
     def _amclPoseCallback(self, msg):
