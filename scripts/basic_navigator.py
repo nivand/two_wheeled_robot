@@ -57,26 +57,26 @@ class BasicNavigator(Node):
         self.initial_pose_received = False
         self.nav_through_poses_client = ActionClient(self,
                                                      NavigateThroughPoses,
-                                                     'lewis/navigate_through_poses')
-        self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'lewis/navigate_to_pose')
-        self.follow_waypoints_client = ActionClient(self, FollowWaypoints, 'lewis/follow_waypoints')
-        self.compute_path_to_pose_client = ActionClient(self, ComputePathToPose, 'lewis/compute_path_to_pose')
+                                                     'robot1/navigate_through_poses')
+        self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'robot1/navigate_to_pose')
+        self.follow_waypoints_client = ActionClient(self, FollowWaypoints, 'robot1/follow_waypoints')
+        self.compute_path_to_pose_client = ActionClient(self, ComputePathToPose, 'robot1/compute_path_to_pose')
         self.compute_path_through_poses_client = ActionClient(self, ComputePathThroughPoses,
-                                                              'lewis/compute_path_through_poses')
+                                                              'robot1/compute_path_through_poses')
         self.localization_pose_sub = self.create_subscription(PoseWithCovarianceStamped,
-                                                              'lewis/amcl_pose',
+                                                              'robot1/amcl_pose',
                                                               self._amclPoseCallback,
                                                               amcl_pose_qos)
         self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped,
-                                                      'lewis/initialpose',
+                                                      'robot1/initialpose',
                                                       10)
-        self.change_maps_srv = self.create_client(LoadMap, 'lewis/map_server/load_map')
+        self.change_maps_srv = self.create_client(LoadMap, 'robot1/map_server/load_map')
         self.clear_costmap_global_srv = self.create_client(
-            ClearEntireCostmap, 'lewis/global_costmap/clear_entirely_global_costmap')
+            ClearEntireCostmap, 'robot1/global_costmap/clear_entirely_global_costmap')
         self.clear_costmap_local_srv = self.create_client(
-            ClearEntireCostmap, 'lewis/local_costmap/clear_entirely_local_costmap')
-        self.get_costmap_global_srv = self.create_client(GetCostmap, 'lewis/global_costmap/get_costmap')
-        self.get_costmap_local_srv = self.create_client(GetCostmap, 'lewis/local_costmap/get_costmap')
+            ClearEntireCostmap, 'robot1/local_costmap/clear_entirely_local_costmap')
+        self.get_costmap_global_srv = self.create_client(GetCostmap, 'robot1/global_costmap/get_costmap')
+        self.get_costmap_local_srv = self.create_client(GetCostmap, 'robot1/local_costmap/get_costmap')
 
     def setInitialPose(self, initial_pose):
         self.initial_pose_received = False
@@ -189,9 +189,9 @@ class BasicNavigator(Node):
             return NavigationResult.UNKNOWN
 
     def waitUntilNav2Active(self):
-        self._waitForNodeToActivate('lewis/amcl')
+        self._waitForNodeToActivate('robot1/amcl')
         self._waitForInitialPose()
-        self._waitForNodeToActivate('lewis/bt_navigator')
+        self._waitForNodeToActivate('robot1/bt_navigator')
         self.info('Nav2 is ready for use!')
         return
 
